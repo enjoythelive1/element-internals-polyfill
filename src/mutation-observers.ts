@@ -1,6 +1,6 @@
-import { internalsMap, shadowHostsMap, upgradeMap, hiddenInputMap, documentFragmentMap, formElementsMap } from './maps.js';
+import { internalsMap, shadowHostsMap, upgradeMap, hiddenInputMap, documentFragmentMap, formElementsMap, validityUpgradeMap, refValueMap } from './maps.js';
 import { aom } from './aom.js';
-import { removeHiddenInputs, initForm, initLabels, upgradeInternals } from './utils.js';
+import { removeHiddenInputs, initForm, initLabels, upgradeInternals, setDisabled, mutationObserverExists } from './utils.js';
 import { ICustomElement } from './types.js';
 
 function initNode(node: ICustomElement): void {
@@ -9,6 +9,62 @@ function initNode(node: ICustomElement): void {
   initForm(node, form, internals);
   initLabels(node, internals.labels);
 }
+
+/**
+ * If a fieldset's disabled state is toggled, the formDisabledCallback
+ * on any child form-associated cusotm elements.
+ */
+export const walkFieldset = (node: HTMLFieldSetElement, firstRender: boolean = false): void => {
+  const walker = document.createTreeWalker(node, NodeFilter.SHOW_ELEMENT, {
+    acceptNode(node: ICustomElement): number {
+      return internalsMap.has(node) ?
+        NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP;
+    }
+  });
+
+  let current = walker.nextNode() as ICustomElement;
+  /**
+   * We don't need to call anything on first render if
+   * the element isn't disabled
+   */
+  const isCallNecessary = (!firstRender || node.disabled)
+
+  while (current) {
+    if (current.formDisabledCallback && isCallNecessary) {
+      setDisabled(current, node.disabled);
+    }
+    current = walker.nextNode() as ICustomElement;
+  }
+};
+
+export const disabledOrNameObserverConfig: MutationObserverInit = { attributes: true, attributeFilter: ['disabled', 'name'] };
+
+export const disabledOrNameObserver = mutationObserverExists() ? new MutationObserver((mutationsList: MutationRecord[]) => {
+  for (const mutation of mutationsList) {
+    const target = mutation.target as ICustomElement;
+
+    /** Manage changes to the ref's disabled state */
+    if (mutation.attributeName === 'disabled') {
+      if (target.constructor['formAssociated']) {
+        setDisabled(target, target.hasAttribute('disabled'));
+      } else if (target.localName === 'fieldset') {
+        /**
+         * Repurpose the observer for fieldsets which need
+         * to be walked whenever the disabled attribute is set
+         */
+        walkFieldset(target as unknown as HTMLFieldSetElement);
+      }
+    }
+    /** Manage changes to the ref's name */
+    if (mutation.attributeName === 'name') {
+      if (target.constructor['formAssociated']) {
+        const internals = internalsMap.get(target);
+        const value = refValueMap.get(target);
+        internals.setFormValue(value);
+      }
+    }
+  }
+}) : {} as MutationObserver;
 
 export function observerCallback(mutationList: MutationRecord[]) {
   mutationList.forEach(mutationRecord => {
@@ -22,6 +78,7 @@ export function observerCallback(mutationList: MutationRecord[]) {
         initNode(node);
       }
 
+
       /** Upgrade the accessibility information on any previously connected */
       if (upgradeMap.has(node)) {
         const internals = upgradeMap.get(node);
@@ -32,6 +89,15 @@ export function observerCallback(mutationList: MutationRecord[]) {
             node.setAttribute(aom[key], internals[key]);
           });
         upgradeMap.delete(node);
+      }
+
+      /** Upgrade the validity state when the element is connected */
+      if (validityUpgradeMap.has(node)) {
+        const internals = validityUpgradeMap.get(node);
+        node.setAttribute('internals-valid', internals.validity.valid.toString());
+        node.setAttribute('internals-invalid', (!internals.validity.valid).toString());
+        node.setAttribute('aria-invalid', (!internals.validity.valid).toString());
+        validityUpgradeMap.delete(node);
       }
 
       /** If the node that's added is a form, check the validity */
@@ -50,6 +116,11 @@ export function observerCallback(mutationList: MutationRecord[]) {
           initNode(current);
           current = walker.nextNode() as ICustomElement;
         }
+      }
+
+      if (node.localName === 'fieldset') {
+        disabledOrNameObserver.observe?.(node, disabledOrNameObserverConfig);
+        walkFieldset(node as unknown as HTMLFieldSetElement, true);
       }
     });
 
@@ -93,11 +164,11 @@ export function fragmentObserverCallback(mutationList: MutationRecord[]): void {
  */
  export const deferUpgrade = (fragment: DocumentFragment) => {
   const observer = new MutationObserver(fragmentObserverCallback)
-  observer.observe(fragment, { childList: true });
+  observer.observe?.(fragment, { childList: true });
   documentFragmentMap.set(fragment, observer);
 };
 
-export const observer = new MutationObserver(observerCallback);
+export const observer = mutationObserverExists() ? new MutationObserver(observerCallback) : {} as MutationObserver;
 export const observerConfig: MutationObserverInit = {
   childList: true,
   subtree: true

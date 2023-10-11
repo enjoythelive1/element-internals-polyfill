@@ -1,4 +1,5 @@
 import {
+  aTimeout,
   elementUpdated,
   expect,
   fixture,
@@ -320,6 +321,18 @@ describe('The ElementInternals polyfill', () => {
       expect(new FormData(form).get('foo')).to.equal('testing');
     });
 
+    it('will respond to name changes', async () => {
+      el.value = 'testing';
+      const formData = new FormData(form);
+      expect(formData.get('xyz')).to.equal(null);
+      expect(formData.get('foo')).to.equal('testing');
+      el.setAttribute('name', 'xyz');
+      await aTimeout(0);
+      const newFormData = new FormData(form);
+      expect(newFormData.get('xyz')).to.equal('testing');
+      expect(newFormData.get('foo')).to.equal(null);
+    });
+
     it('will trigger the formDisabledCallback when disabled', async () => {
       el.disabled = true;
       await elementUpdated(el);
@@ -571,6 +584,65 @@ describe('The ElementInternals polyfill', () => {
       const shadowElement = form.querySelector('closed-element-with-custom-form-element');
       const testEl = shadowElement.renderRoot.querySelector("test-el")
       expect(testEl.internals.form).to.be.null;
+    });
+  });
+
+  describe('disabled custom element', () => {
+    class DisabledElement extends HTMLElement {
+      static formAssociated = true;
+
+      order = [];
+
+      constructor() {
+        super();
+
+        this.attachShadow({ mode: 'open' });
+        this.attachInternals();
+
+        this.order.push('constructor');
+      }
+
+      connectedCallback() {
+        this.order.push('connectedCallback');
+      }
+
+      disconnectedCallback() {
+        this.order.push('disconnectedCallback');
+      }
+
+      formDisabledCallback() {
+        this.order.push('formDisabledCallback');
+      }
+    }
+
+    customElements.define('test-disabled', DisabledElement);
+
+    let el;
+
+    beforeEach(async () => {
+      el = await fixture(html`<test-disabled disabled></test-disabled>`);
+    });
+
+    it('should have called the callbacks in the correct order', async () => {
+      await el.updateComplete;
+
+      expect(el.order).to.eql(['constructor', 'formDisabledCallback', 'connectedCallback']);
+    });
+
+    it('should only call formDisabledCallback once', async () => {
+      await el.updateComplete;
+
+      const container = el.parentElement;
+      container.removeChild(el);
+      container.appendChild(el);
+
+      expect(el.order).to.eql([
+        'constructor',
+        'formDisabledCallback',
+        'connectedCallback',
+        'disconnectedCallback',
+        'connectedCallback'
+      ]);
     });
   });
 });

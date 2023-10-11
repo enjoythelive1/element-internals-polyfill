@@ -1,7 +1,14 @@
-import { ICustomElement } from "./types";
+import { ICustomElement } from "./types.js";
 
 /** Save a reference to the ref for teh CustomStateSet */
 const customStateMap = new WeakMap<CustomStateSet, ICustomElement>();
+
+function addState(ref: ICustomElement, stateName: string): void {
+  ref.toggleAttribute(stateName, true);
+  if (ref.part) {
+    ref.part.add(stateName);
+  }
+}
 
 export type CustomState = `--${string}`;
 
@@ -25,10 +32,21 @@ export class CustomStateSet extends Set<CustomState> {
     }
     const result = super.add(state);
     const ref = customStateMap.get(this);
-    ref.toggleAttribute(`state${state}`, true);
-    if (ref.part) {
-      ref.part.add(`state${state}`);
+    const stateName = `state${state}`;
+
+    /**
+     * Only add the state immediately if the ref is connected to the DOM;
+     * otherwise, wait a tick because the element is likely being constructed
+     * by document.createElement and would throw otherwise.
+     */
+    if (ref.isConnected) {
+      addState(ref, stateName);
+    } else {
+      setTimeout(() => {
+        addState(ref, stateName);
+      });
     }
+
     return result;
   }
 
@@ -42,10 +60,27 @@ export class CustomStateSet extends Set<CustomState> {
   delete(state: CustomState) {
     const result = super.delete(state);
     const ref = customStateMap.get(this);
-    ref.toggleAttribute(`state${state}`, false);
-    if (ref.part) {
-      ref.part.remove(`state${state}`);
+
+    /**
+     * Only toggle the state/attr immediately if the ref is connected to the DOM;
+     * otherwise, wait a tick because the element is likely being constructed
+     * by document.createElement and would throw otherwise.
+     */
+    if (ref.isConnected) {
+      ref.toggleAttribute(`state${state}`, false);
+      if (ref.part) {
+        ref.part.remove(`state${state}`);
+      }
+    } else {
+      setTimeout(() => {
+        ref.toggleAttribute(`state${state}`, false);
+        if (ref.part) {
+          ref.part.remove(`state${state}`);
+        }
+      });
     }
+
+
     return result;
   }
 }

@@ -1,5 +1,5 @@
-import { CustomStateSet } from "./CustomStateSet";
-import { ElementInternals } from "./element-internals";
+import { CustomStateSet } from './CustomStateSet.js';
+import { ElementInternals } from './element-internals.js';
 
 export interface IAom {
   ariaAtomic: string;
@@ -8,12 +8,14 @@ export interface IAom {
   ariaChecked: string;
   ariaColCount: string;
   ariaColIndex: string;
+  ariaColIndexText: string;
   ariaColSpan: string;
   ariaCurrent: string;
   ariaDisabled: string;
   ariaExpanded: string;
   ariaHasPopup: string;
   ariaHidden: string;
+  ariaInvalid: string;
   ariaKeyShortcuts: string;
   ariaLabel: string;
   ariaLevel: string;
@@ -31,6 +33,7 @@ export interface IAom {
   ariaRoleDescription: string;
   ariaRowCount: string;
   ariaRowIndex: string;
+  ariaRowIndexText: string;
   ariaRowSpan: string;
   ariaSelected: string;
   ariaSetSize: string;
@@ -49,14 +52,14 @@ export interface IElementInternals extends IAom {
   reportValidity: () => boolean;
   setFormValue: (value: string | FormData | null) => void;
   setValidity: (
-    validityChanges: Partial<globalThis.ValidityState>,
+    validityChanges: Partial<ValidityState>,
     validationMessage?: string,
     anchor?: HTMLElement
   ) => void;
   shadowRoot: ShadowRoot|null;
   states: CustomStateSet;
   validationMessage: string;
-  validity: globalThis.ValidityState;
+  validity: ValidityState;
   willValidate: boolean;
 }
 

@@ -1,26 +1,25 @@
 import { hiddenInputMap, formsMap, formElementsMap, internalsMap } from './maps.js';
+import { disabledOrNameObserver, disabledOrNameObserverConfig } from './mutation-observers.js';
 import { ICustomElement, IElementInternals, LabelsList } from './types.js';
 
-const observerConfig: MutationObserverInit = { attributes: true, attributeFilter: ['disabled'] };
+/**
+ * Toggle's the disabled state (attributes & callback) on the given element
+ * @param {ICustomElement} ref - The custom element instance
+ * @param {boolean} disabled - The disabled state
+ */
+export const setDisabled = (ref: ICustomElement, disabled: boolean): void => {
+  ref.toggleAttribute('internals-disabled', disabled);
 
-const observer = new MutationObserver((mutationsList: MutationRecord[]) => {
-  for (const mutation of mutationsList) {
-    const target = mutation.target as ICustomElement;
-
-    if (target.constructor['formAssociated']) {
-      const isDisabled = target.hasAttribute('disabled');
-      target.toggleAttribute('internals-disabled', isDisabled);
-      if (isDisabled) {
-        target.setAttribute('aria-disabled', 'true');
-      } else {
-        target.removeAttribute('aria-disabled');
-      }
-      if (target.formDisabledCallback) {
-        target.formDisabledCallback.apply(target, [isDisabled]);
-      }
-    }
+  if (disabled) {
+    ref.setAttribute('aria-disabled', 'true');
+  } else {
+    ref.removeAttribute('aria-disabled');
   }
-});
+
+  if (ref.formDisabledCallback) {
+    ref.formDisabledCallback.apply(ref, [disabled]);
+  }
+};
 
 /**
  * Removes all hidden inputs for the given element internals instance
@@ -59,11 +58,7 @@ export const createHiddenInput = (ref: ICustomElement, internals: IElementIntern
  */
 export const initRef = (ref: ICustomElement, internals: IElementInternals): void => {
   hiddenInputMap.set(internals, []);
-
-  const isDisabled = ref.hasAttribute('disabled');
-  ref.toggleAttribute('internals-disabled', isDisabled);
-
-  observer.observe(ref, observerConfig);
+  disabledOrNameObserver.observe?.(ref, disabledOrNameObserverConfig);
 };
 
 /**
@@ -75,7 +70,7 @@ export const initRef = (ref: ICustomElement, internals: IElementInternals): void
 export const initLabels = (ref: ICustomElement, labels: LabelsList): void => {
   if (labels.length) {
     Array.from(labels).forEach(label =>
-      label.addEventListener('click', ref.focus.bind(ref)));
+      label.addEventListener('click', ref.click.bind(ref)));
     let firstLabelId = labels[0].id;
     if (!labels[0].id) {
       firstLabelId = `${labels[0].htmlFor}_Label`;
@@ -93,7 +88,7 @@ export const initLabels = (ref: ICustomElement, labels: LabelsList): void => {
  */
 export const setFormValidity = (form: HTMLFormElement) => {
   const nativeControlValidity = Array.from(form.elements)
-    .filter((element: Element & { validity: ValidityState }) => element.validity)
+    .filter((element: Element & { validity: ValidityState }) => !element.tagName.includes('-') && element.validity)
     .map(
       (element: Element & { validity: ValidityState }) => element.validity.valid
     );
@@ -135,12 +130,10 @@ export const formInputCallback = (event: Event) => {
  * @return {void}
  */
 export const wireSubmitLogic = (form: HTMLFormElement) => {
-  const SUBMIT_BUTTON_SELECTOR = ':is(:is(button, input)[type=submit], button:not([type])):not([disabled])';
-  let submitButtonSelector = `${SUBMIT_BUTTON_SELECTOR}:not([form])`;
-
-  if (form.id) {
-    submitButtonSelector += `,${SUBMIT_BUTTON_SELECTOR}[form='${form.id}']`;
-  }
+  const submitButtonSelector = ['button[type=submit]', 'input[type=submit]', 'button:not([type])']
+    .map(sel => `${sel}:not([disabled])`)
+    .map(sel => `${sel}:not([form])${form.id ? `,${sel}[form='${form.id}']` : ''}`)
+    .join(',');
 
   form.addEventListener('click', event => {
     const target = event.target as Element;
@@ -299,4 +292,13 @@ export const upgradeInternals = (ref: ICustomElement) => {
     initLabels(ref, labels);
     initForm(ref, form, internals);
   }
+};
+
+/**
+ * Check to see if MutationObserver exists in the current
+ * execution context. Will likely return false on the server
+ * @returns {boolean}
+ */
+export function mutationObserverExists(): boolean {
+  return typeof MutationObserver !== 'undefined';
 };

@@ -1,4 +1,5 @@
 import {
+  connectedCallbackMap,
   internalsMap,
   refMap,
   refValueMap,
@@ -7,21 +8,24 @@ import {
   validationAnchorMap,
   validityMap,
   validationMessageMap,
-} from './maps';
+  validityUpgradeMap,
+} from './maps.js';
 import {
   createHiddenInput,
   findParentForm,
   initRef,
-  overrideFormMethod,
+  mutationObserverExists,
   removeHiddenInputs,
+  setDisabled,
   throwIfNotFormAssociated,
   upgradeInternals
-} from './utils';
-import { initAom } from './aom';
-import { ValidityState, reconcileValidity, setValid } from './ValidityState';
-import { deferUpgrade, observerCallback, observerConfig } from './mutation-observers';
-import { IElementInternals, ICustomElement, LabelsList } from './types';
-import { CustomStateSet } from './CustomStateSet';
+} from './utils.js';
+import { initAom } from './aom.js';
+import { ValidityState, reconcileValidity, setValid } from './ValidityState.js';
+import { deferUpgrade, observerCallback, observerConfig } from './mutation-observers.js';
+import { IElementInternals, ICustomElement, LabelsList } from './types.js';
+import { CustomStateSet } from './CustomStateSet.js';
+import { patchFormPrototype } from './patch-form-prototype.js';
 
 export class ElementInternals implements IElementInternals {
   ariaAtomic: string;
@@ -30,12 +34,14 @@ export class ElementInternals implements IElementInternals {
   ariaChecked: string;
   ariaColCount: string;
   ariaColIndex: string;
+  ariaColIndexText: string;
   ariaColSpan: string;
   ariaCurrent: string;
   ariaDisabled: string;
   ariaExpanded: string;
   ariaHasPopup: string;
   ariaHidden: string;
+  ariaInvalid: string;
   ariaKeyShortcuts: string;
   ariaLabel: string;
   ariaLevel: string;
@@ -53,6 +59,7 @@ export class ElementInternals implements IElementInternals {
   ariaRoleDescription: string;
   ariaRowCount: string;
   ariaRowIndex: string;
+  ariaRowIndexText: string;
   ariaRowSpan: string;
   ariaSelected: string;
   ariaSetSize: string;
@@ -82,8 +89,6 @@ export class ElementInternals implements IElementInternals {
     initAom(ref, this);
     initRef(ref, this);
     Object.seal(this);
-
-    upgradeInternals(ref);
 
     /**
      * If appended from a DocumentFragment, wait until it is connected
@@ -188,7 +193,7 @@ export class ElementInternals implements IElementInternals {
    *
    * If the field is valid and a message is specified, the method will throw a TypeError.
    */
-  setValidity(validityChanges: Partial<globalThis.ValidityState>, validationMessage?: string, anchor?: HTMLElement) {
+  setValidity(validityChanges: Partial<ValidityState>, validationMessage?: string, anchor?: HTMLElement) {
     const ref = refMap.get(this);
     throwIfNotFormAssociated(ref, `Failed to execute 'setValidity' on 'ElementInternals': The target element is not a form-associated custom element.`);
     if (!validityChanges) {
@@ -211,9 +216,16 @@ export class ElementInternals implements IElementInternals {
       throw new DOMException(`Failed to execute 'setValidity' on 'ElementInternals': The second argument should not be empty if one or more flags in the first argument are true.`);
     }
     validationMessageMap.set(this, valid ? '' : validationMessage);
-    ref.toggleAttribute('internals-invalid', !valid);
-    ref.toggleAttribute('internals-valid', valid);
-    ref.setAttribute('aria-invalid', `${!valid}`);
+
+    // check to make sure the host element is connected before adding attributes
+    // because safari doesnt allow elements to have attributes added in the constructor
+    if (ref.isConnected) {
+      ref.toggleAttribute('internals-invalid', !valid);
+      ref.toggleAttribute('internals-valid', valid);
+      ref.setAttribute('aria-invalid', `${!valid}`);
+    } else {
+      validityUpgradeMap.set(ref, this);
+    }
   }
 
   get shadowRoot(): ShadowRoot | null {
@@ -233,7 +245,7 @@ export class ElementInternals implements IElementInternals {
   }
 
   /** The current validity state of the object */
-  get validity(): globalThis.ValidityState {
+  get validity(): ValidityState {
     const ref = refMap.get(this);
     throwIfNotFormAssociated(ref, `Failed to read the 'validity' property from 'ElementInternals': The target element is not a form-associated custom element.`);
     const validity = validityMap.get(this);
@@ -255,13 +267,17 @@ export class ElementInternals implements IElementInternals {
 }
 
 declare global {
+  interface CustomElementConstructor {
+    formAssociated?: boolean;
+  }
+
   interface Window {
     ElementInternals: typeof ElementInternals
   }
 }
 
 export function isElementInternalsSupported(): boolean {
-  if (!window.ElementInternals) {
+  if (typeof window === 'undefined' || !window.ElementInternals || !HTMLElement.prototype.attachInternals) {
     return false;
   }
 
@@ -291,63 +307,94 @@ export function isElementInternalsSupported(): boolean {
 }
 
 if (!isElementInternalsSupported()) {
-  /** @ts-expect-error: we need to replace the default ElementInternals */
-  window.ElementInternals = ElementInternals;
+  if (typeof window !== 'undefined') {
+    /** @ts-expect-error: we need to replace the default ElementInternals */
+    window.ElementInternals = ElementInternals;
+  }
 
+  if (typeof CustomElementRegistry !== 'undefined') {
+    const define = CustomElementRegistry.prototype.define;
+    CustomElementRegistry.prototype.define = function (name, constructor, options) {
+      if (constructor.formAssociated) {
+        const connectedCallback = constructor.prototype.connectedCallback;
+        constructor.prototype.connectedCallback = function () {
+          if (!connectedCallbackMap.has(this)) {
+            connectedCallbackMap.set(this, true);
 
-  function attachShadowObserver(...args) {
-    const shadowRoot = attachShadow.apply(this, args);
-    const observer = new MutationObserver(observerCallback);
-    shadowRootMap.set(this, shadowRoot);
-    if (window.ShadyDOM) {
-      observer.observe(this, observerConfig);
-    } else {
-      observer.observe(shadowRoot, observerConfig);
+            if (this.hasAttribute('disabled')) {
+              setDisabled(this, true);
+            }
+          }
+
+          if (connectedCallback != null) {
+            connectedCallback.apply(this);
+          }
+          // always upgradeInternals in connectedCallback instead of constructor
+          upgradeInternals(this);
+        };
+      }
+
+      define.call(this, name, constructor, options);
     }
-    shadowHostsMap.set(this, observer);
-    return shadowRoot;
-  }
-
-  function checkValidityOverride(...args): boolean {
-    let returnValue = checkValidity.apply(this, args);
-    return overrideFormMethod(this, returnValue, 'checkValidity');
-  }
-
-  function reportValidityOverride(...args): boolean {
-    let returnValue = reportValidity.apply(this, args);
-    return overrideFormMethod(this, returnValue, 'reportValidity');
   }
 
   /**
    * Attaches an ElementInternals instance to a custom element. Calling this method
    * on a built-in element will throw an error.
    */
-  HTMLElement.prototype.attachInternals = function(): IElementInternals {
-    if (this.tagName.indexOf('-') === -1) {
-      throw new Error(`Failed to execute 'attachInternals' on 'HTMLElement': Unable to attach ElementInternals to non-custom elements.`);
+  if (typeof HTMLElement !== 'undefined') {
+    HTMLElement.prototype.attachInternals = function(): IElementInternals {
+      if (!this.tagName) {
+        /** This happens in the LitSSR environment. Here we can generally ignore internals for now */
+        return {} as object as IElementInternals;
+      } else if (this.tagName.indexOf('-') === -1) {
+        throw new Error(`Failed to execute 'attachInternals' on 'HTMLElement': Unable to attach ElementInternals to non-custom elements.`);
+      }
+      if (internalsMap.has(this)) {
+        throw new DOMException(`DOMException: Failed to execute 'attachInternals' on 'HTMLElement': ElementInternals for the specified element was already attached.`);
+      }
+      return new ElementInternals(this) as IElementInternals;
     }
-    if (internalsMap.has(this)) {
-      throw new DOMException(`DOMException: Failed to execute 'attachInternals' on 'HTMLElement': ElementInternals for the specified element was already attached.`);
-    }
-    return new ElementInternals(this) as IElementInternals;
   }
 
-  const attachShadow = Element.prototype.attachShadow;
-  Element.prototype.attachShadow = attachShadowObserver;
+  if (typeof Element !== 'undefined') {
+    function attachShadowObserver(...args) {
+      const shadowRoot = attachShadow.apply(this, args);
+      shadowRootMap.set(this, shadowRoot);
 
-  const documentObserver = new MutationObserver(observerCallback);
-  documentObserver.observe(document.documentElement, observerConfig);
+      if (mutationObserverExists()) {
+        const observer = new MutationObserver(observerCallback);
+        if (window.ShadyDOM) {
+          observer.observe(this, observerConfig);
+        } else {
+          observer.observe(shadowRoot, observerConfig);
+        }
+        shadowHostsMap.set(this, observer);
+      }
+      return shadowRoot;
+    }
 
-  const checkValidity = HTMLFormElement.prototype.checkValidity;
-  HTMLFormElement.prototype.checkValidity = checkValidityOverride;
+    const attachShadow = Element.prototype.attachShadow;
+    Element.prototype.attachShadow = attachShadowObserver;
+  }
 
-  const reportValidity = HTMLFormElement.prototype.reportValidity;
-  HTMLFormElement.prototype.reportValidity = reportValidityOverride;
+  if (mutationObserverExists() && typeof document !== 'undefined') {
+    const documentObserver = new MutationObserver(observerCallback);
+    documentObserver.observe(document.documentElement, observerConfig);
+  }
 
-  if (!window.CustomStateSet) {
+  /**
+   * Keeps the polyfill from throwing in environments where HTMLFormElement
+   * is undefined like in a server environment
+   */
+  if (typeof HTMLFormElement !== 'undefined') {
+    patchFormPrototype();
+  }
+
+  if (typeof window !== 'undefined' && !window.CustomStateSet) {
     window.CustomStateSet = CustomStateSet;
   }
-} else if (!window.CustomStateSet) {
+} else if (typeof window !== 'undefined' && !window.CustomStateSet) {
   window.CustomStateSet = CustomStateSet;
   const attachInternals = HTMLElement.prototype.attachInternals;
   HTMLElement.prototype.attachInternals = function(...args) {

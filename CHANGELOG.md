@@ -2,6 +2,171 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.3.8](https://github.com/calebdwilliams/element-internals-polyfill/compare/v1.3.7...v1.3.8) (2023-09-07)
+
+
+### Bug Fixes
+
+* only run document observer if document exists ([7bf53f5](https://github.com/calebdwilliams/element-internals-polyfill/commit/7bf53f54182f47175e20cab7de9b002c6547d29a))
+
+### [1.3.7](https://github.com/calebdwilliams/element-internals-polyfill/compare/v1.3.6...v1.3.7) (2023-08-07)
+
+
+### Bug Fixes
+
+* **types:** reference `ValidityState` from typescript lib ([bbcf7f4](https://github.com/calebdwilliams/element-internals-polyfill/commit/bbcf7f4f0c1f59b9c61444bd7c8f4c0762801a1c)), closes [#119](https://github.com/calebdwilliams/element-internals-polyfill/issues/119)
+
+### [1.3.6](https://github.com/calebdwilliams/element-internals-polyfill/compare/v1.3.5...v1.3.6) (2023-08-07)
+
+
+### Bug Fixes
+
+* remove :is in submit selector to prevent error in non-supporting browsers ([f3cb74a](https://github.com/calebdwilliams/element-internals-polyfill/commit/f3cb74adfbfd22684c5bc5e70f0528b35033b160))
+
+### [1.3.5](https://github.com/calebdwilliams/element-internals-polyfill/compare/v1.3.4...v1.3.5) (2023-05-04)
+
+
+### Bug Fixes
+
+* **form submit:** change submit button selector for jsdom compatibility ([ee1269d](https://github.com/calebdwilliams/element-internals-polyfill/commit/ee1269d3b9ddafcf795c67aa74d2de89c492189f))
+
+### [1.3.4](https://github.com/calebdwilliams/element-internals-polyfill/compare/v1.3.3...v1.3.4) (2023-04-26)
+
+
+### Bug Fixes
+
+* custom states will delay if removed in constructor ([74d9ae2](https://github.com/calebdwilliams/element-internals-polyfill/commit/74d9ae2ccbe6eaae065024acccc0bb3357e22b49))
+
+### [1.3.3](https://github.com/calebdwilliams/element-internals-polyfill/compare/v1.3.2...v1.3.3) (2023-04-26)
+
+
+### Bug Fixes
+
+* update src import paths ([35ac8d3](https://github.com/calebdwilliams/element-internals-polyfill/commit/35ac8d3d47082ad0db4adee8e55b3ecbe0320f83))
+
+### [1.3.2](https://github.com/calebdwilliams/element-internals-polyfill/compare/v1.3.1...v1.3.2) (2023-04-26)
+
+
+### Bug Fixes
+
+* custom states will delay if added in constructor ([f81ef5e](https://github.com/calebdwilliams/element-internals-polyfill/commit/f81ef5ec7f2d9e64866436ca7e21dd0464704fea))
+
+### [1.3.1](https://github.com/calebdwilliams/element-internals-polyfill/compare/v1.3.0...v1.3.1) (2023-04-24)
+
+
+### Bug Fixes
+
+* respond to changes to the name attribute and naive jsdom tests ([9af08e9](https://github.com/calebdwilliams/element-internals-polyfill/commit/9af08e9fdf60a2d639274f30d96e61b2892f995e))
+
+## [1.3.0](https://github.com/calebdwilliams/element-internals-polyfill/compare/v1.2.6...v1.3.0) (2023-04-14)
+
+
+### Features
+
+* works with SSR ([bc68c1f](https://github.com/calebdwilliams/element-internals-polyfill/commit/bc68c1f250bbf0887e41edfffd67412253d5f02b))
+
+### [1.2.6](https://github.com/calebdwilliams/element-internals-polyfill/compare/v1.2.5...v1.2.6) (2023-03-06)
+
+
+### Bug Fixes
+
+* fix typeof check for HTMLFormElement ([27c0006](https://github.com/calebdwilliams/element-internals-polyfill/commit/27c0006ccd3ca9045a6ea7dd37d04b0f6f98f1d4))
+
+### [1.2.5](https://github.com/calebdwilliams/element-internals-polyfill/compare/v1.2.4...v1.2.5) (2023-03-06)
+
+
+### Bug Fixes
+
+* only attempt to patch HTMLFormElement if it is defined ([7dd1998](https://github.com/calebdwilliams/element-internals-polyfill/commit/7dd19982f34e1f54835d76e389570bba926f39a6))
+
+### [1.2.4](https://github.com/calebdwilliams/element-internals-polyfill/compare/v1.2.3...v1.2.4) (2023-03-03)
+
+
+### Bug Fixes
+
+* update how polyfill patches customElements.define ([c478d3e](https://github.com/calebdwilliams/element-internals-polyfill/commit/c478d3e3f71d90ac38f272e3c4b414b1dbed3652))
+
+### [1.2.3](https://github.com/calebdwilliams/element-internals-polyfill/compare/v1.2.2...v1.2.3) (2023-02-03)
+
+
+### Bug Fixes
+
+* rollback use of ?? and ?. operators to maintain compatibility with legacy build systems, such as those used in storybook ([#107](https://github.com/calebdwilliams/element-internals-polyfill/issues/107)) ([3fad9fb](https://github.com/calebdwilliams/element-internals-polyfill/commit/3fad9fb3f47a21745b123b5d580b339cfc7349fb))
+
+### [1.2.2](https://github.com/calebdwilliams/element-internals-polyfill/compare/v1.2.1...v1.2.2) (2023-01-26)
+
+
+### Bug Fixes
+
+* **utils:** flip order of nativeControlValidity filter predicate check ([#106](https://github.com/calebdwilliams/element-internals-polyfill/issues/106)) ([ce5aea2](https://github.com/calebdwilliams/element-internals-polyfill/commit/ce5aea287259a8aeaf1c1fdc4a2b4edfd101431f))
+
+### [1.2.1](https://github.com/calebdwilliams/element-internals-polyfill/compare/v1.2.0...v1.2.1) (2023-01-26)
+
+
+### Bug Fixes
+
+* filtering native elements out of setFormValidity#nativeControlValidity ([80442ed](https://github.com/calebdwilliams/element-internals-polyfill/commit/80442edc500db999ab180060918d75232c07e8cd))
+
+## [1.2.0](https://github.com/calebdwilliams/element-internals-polyfill/compare/v1.1.22...v1.2.0) (2023-01-26)
+
+### [1.1.22](https://github.com/calebdwilliams/element-internals-polyfill/compare/v1.1.21...v1.1.22) (2023-01-26)
+
+### [1.1.21](https://github.com/calebdwilliams/element-internals-polyfill/compare/v1.1.19...v1.1.21) (2023-01-26)
+
+
+### Bug Fixes
+
+* ensure polyfill generates attributes ([ca506cd](https://github.com/calebdwilliams/element-internals-polyfill/commit/ca506cd5f4c82492dcb4e81fe995487b9eaefaa4))
+* polyfill respects setting disabled on fieldset elements ([ca90197](https://github.com/calebdwilliams/element-internals-polyfill/commit/ca90197dce1c8393400deaaa6b5d304b7e9ac9e9))
+
+### [1.1.20](https://github.com/calebdwilliams/element-internals-polyfill/compare/v1.1.19...v1.1.20) (2023-01-21)
+
+
+### Bug Fixes
+
+* polyfill respects setting disabled on fieldset elements ([ca90197](https://github.com/calebdwilliams/element-internals-polyfill/commit/ca90197dce1c8393400deaaa6b5d304b7e9ac9e9))
+
+### [1.1.19](https://github.com/calebdwilliams/element-internals-polyfill/compare/v1.1.18...v1.1.19) (2023-01-15)
+
+### [1.1.18](https://github.com/calebdwilliams/element-internals-polyfill/compare/v1.1.17...v1.1.18) (2023-01-05)
+
+
+### Bug Fixes
+
+* add missing aria attributes ([01bc332](https://github.com/calebdwilliams/element-internals-polyfill/commit/01bc33267e1814ed6e84009e7f758f73cd1c155d))
+
+### [1.1.17](https://github.com/calebdwilliams/element-internals-polyfill/compare/v1.1.14...v1.1.17) (2022-12-09)
+
+
+### Bug Fixes
+
+* click references in label click ([89967dd](https://github.com/calebdwilliams/element-internals-polyfill/commit/89967dd91d0a04726067ca6f36382ac6714eccd5)), closes [#85](https://github.com/calebdwilliams/element-internals-polyfill/issues/85)
+* element internals in the LitSSR environment ([5bc5e3e](https://github.com/calebdwilliams/element-internals-polyfill/commit/5bc5e3ef760acc8c1d035aefa0cf46abc2d73074))
+* fixes condition in mutation observer ([3b8ece9](https://github.com/calebdwilliams/element-internals-polyfill/commit/3b8ece99c24d4b70f8f32b3b4ee9d8d72d35dd59))
+
+### [1.1.16](https://github.com/calebdwilliams/element-internals-polyfill/compare/v1.1.14...v1.1.16) (2022-10-31)
+
+
+### Bug Fixes
+
+* click references in label click ([89967dd](https://github.com/calebdwilliams/element-internals-polyfill/commit/89967dd91d0a04726067ca6f36382ac6714eccd5)), closes [#85](https://github.com/calebdwilliams/element-internals-polyfill/issues/85)
+* element internals in the LitSSR environment ([5bc5e3e](https://github.com/calebdwilliams/element-internals-polyfill/commit/5bc5e3ef760acc8c1d035aefa0cf46abc2d73074))
+* fixes condition in mutation observer ([3b8ece9](https://github.com/calebdwilliams/element-internals-polyfill/commit/3b8ece99c24d4b70f8f32b3b4ee9d8d72d35dd59))
+
+### [1.1.15](https://github.com/calebdwilliams/element-internals-polyfill/compare/v1.1.14...v1.1.15) (2022-10-18)
+
+
+### Bug Fixes
+
+* element internals in the LitSSR environment ([5bc5e3e](https://github.com/calebdwilliams/element-internals-polyfill/commit/5bc5e3ef760acc8c1d035aefa0cf46abc2d73074))
+
+### [1.1.14](https://github.com/calebdwilliams/element-internals-polyfill/compare/v1.1.13...v1.1.14) (2022-09-22)
+
+
+### Bug Fixes
+
+* fix feature detection ([0775126](https://github.com/calebdwilliams/element-internals-polyfill/commit/07751269a344e703ddf3831c7cee7cf5abf07fe9))
+
 ### [1.1.13](https://github.com/calebdwilliams/element-internals-polyfill/compare/v1.1.9...v1.1.13) (2022-09-15)
 
 
